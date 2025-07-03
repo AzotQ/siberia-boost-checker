@@ -121,7 +121,7 @@ export default async function handler(req, res) {
 
         return res.status(200).json({ leaderboard });
     } catch (err) {
-        console.error('Error in nft-reputation handler:', err);
+        console.error('Error in nft-checker handler:', err);
         return res.status(500).json({ error: err.message });
     }
 }

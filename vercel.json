@@ -5,7 +5,7 @@
     { "src": "public/**/*",  "use": "@vercel/static" }
   ],
   "routes": [
-    { "src": "/api/(.*)",             "dest": "/api/nft-reputation.js" },
+    { "src": "/api/(.*)",             "dest": "/api/nft-checker.js" },
     { "src": "/(.*\\.(js|css|html))", "dest": "/public/$1" },
     { "src": "/",                     "dest": "/public/leaderboard.html" }
   ]
