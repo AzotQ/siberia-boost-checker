@@ -34,10 +34,10 @@
         <input type="text" id="wallet" value="feed_yupiks.near" />
     </label>
     <label>С:
-        <input type="datetime-local" id="start" value="2025-06-30T19:50:00" step="1" />
+        <input type="datetime-local" id="start" step="1" />
     </label>
     <label>По:
-        <input type="datetime-local" id="end"   value="2025-07-02T23:59:59" step="1" />
+        <input type="datetime-local" id="end" step="1" />
     </label>
     <label>Токен:
         <input type="text" id="tokenFilter" placeholder="Название токена (часть)" />
@@ -49,7 +49,22 @@
 <script>
     const API = '/api/nft-checker';
     document.getElementById('refresh').onclick = fetchBoard;
-    window.addEventListener('DOMContentLoaded', fetchBoard);
+
+    function setDefaultDates() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const startVal = `${year}-${month}-${day}T00:00:00`;
+        const endVal = `${year}-${month}-${day}T23:59:59`;
+        document.getElementById('start').value = startVal;
+        document.getElementById('end').value = endVal;
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        setDefaultDates();
+        fetchBoard();
+    });
 
     async function fetchBoard() {
         const w = document.getElementById('wallet').value.trim();
@@ -106,7 +121,7 @@
         data.forEach((item, i) => {
             const det = document.createElement('details');
             const sum = document.createElement('summary');
-            sum.innerHTML = `<div>${i+1}</div><div>${item.wallet}</div><div>${item.total}</div>`;
+            sum.innerHTML = `<div>${i + 1}</div><div>${item.wallet}</div><div>${item.total}</div>`;
             det.appendChild(sum);
 
             const tokensDiv = document.createElement('div');
