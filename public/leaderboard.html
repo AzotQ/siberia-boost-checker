@@ -18,11 +18,10 @@
         .tokens { padding: .5rem 1rem; background: #fff; }
         .token-item {
             display: grid;
-            grid-template-columns: 4fr 1fr 2fr;
+            grid-template-columns: 4fr 1fr;
             padding: .25rem 0;
             border-bottom: 1px solid #eee;
         }
-        .token-item:last-child { border-bottom: none; }
         .controls { margin-bottom: 1rem; }
         .controls input { margin-right: .5rem; }
         .error { color: red; padding: 1rem 0; }
@@ -69,22 +68,31 @@
 
         const resp = await fetch(`${API}?${ps}`);
         if (!resp.ok) {
-            container.innerHTML = `<div class="error">API ${resp.status}</div>`;
+            container.innerHTML = `<div class=\"error\">API ${resp.status}</div>`;
             return;
         }
         const { leaderboard } = await resp.json();
 
+        // Prepare data: compute token counts
+        let data = leaderboard.map(item => {
+            const totalCount = item.tokens.reduce((sum, t) => sum + t.count, 0);
+            return {
+                wallet: item.wallet,
+                total: totalCount,
+                tokens: item.tokens
+            };
+        });
+
         // Filter by token title if provided
-        let data = leaderboard;
         if (tokenFilter) {
-            data = leaderboard.map(item => {
+            data = data.map(item => {
                 const filteredTokens = item.tokens.filter(t =>
                     t.title.toLowerCase().includes(tokenFilter)
                 );
-                const totalFilteredRep = filteredTokens.reduce((sum, t) => sum + t.totalRep, 0);
+                const totalCount = filteredTokens.reduce((sum, t) => sum + t.count, 0);
                 return {
                     wallet: item.wallet,
-                    total: totalFilteredRep,
+                    total: totalCount,
                     tokens: filteredTokens
                 };
             }).filter(item => item.tokens.length > 0);
@@ -109,7 +117,6 @@
                 ti.innerHTML = `
             <span>${t.title}</span>
             <span>${t.count}</span>
-            <strong>${t.totalRep}</strong>
           `;
                 tokensDiv.appendChild(ti);
             });
