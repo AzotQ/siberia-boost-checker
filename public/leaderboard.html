@@ -25,22 +25,36 @@
         .controls { margin-bottom: 1rem; }
         .controls input { margin-right: .5rem; }
         .error { color: red; padding: 1rem 0; }
+        @media (max-width: 480px) {
+            .controls {
+                display: flex;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 3px;
+            }
+            .controls label {
+                display: flex;
+                flex-direction: row;
+                justify-content: space-between;
+                width: 70%;
+            }
+        }
     </style>
 </head>
 <body>
 <h1>SIBERIA nft checker</h1>
 <div class="controls">
-    <label>Wallet ID:
-        <input type="text" id="wallet" value="feed_yupiks.near" />
+    <label>Wallet:
+        <input type="text" id="wallet" value="siberia_collection.near" />
     </label>
-    <label>С:
+    <label>с:
         <input type="datetime-local" id="start" step="1" />
     </label>
-    <label>По:
+    <label>по:
         <input type="datetime-local" id="end" step="1" />
     </label>
-    <label>Токен:
-        <input type="text" id="tokenFilter" placeholder="Название токена (часть)" />
+    <label>Имя NFT:
+        <input type="text" id="tokenFilter" placeholder="имя NFT" />
     </label>
     <button id="refresh">Обновить</button>
 </div>
