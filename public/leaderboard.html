@@ -18,27 +18,43 @@
         .tokens { padding: .5rem 1rem; background: #fff; }
         .token-item {
             display: grid;
-            grid-template-columns: 4fr 1fr 2fr;
+            grid-template-columns: 4fr 1fr;
             padding: .25rem 0;
             border-bottom: 1px solid #eee;
         }
-        .token-item:last-child { border-bottom: none; }
         .controls { margin-bottom: 1rem; }
         .controls input { margin-right: .5rem; }
         .error { color: red; padding: 1rem 0; }
+        @media (max-width: 480px) {
+            .controls {
+                display: flex;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 3px;
+            }
+            .controls label {
+                display: flex;
+                flex-direction: row;
+                justify-content: space-between;
+                width: 70%;
+            }
+        }
     </style>
 </head>
 <body>
 <h1>SIBERIA nft checker</h1>
 <div class="controls">
-    <label>Wallet ID:
-        <input type="text" id="wallet" value="feed_yupiks.near" />
+    <label>Wallet:
+        <input type="text" id="wallet" value="siberia_collection.near" />
     </label>
-    <label>С:
-        <input type="datetime-local" id="start" value="2025-06-30T19:50:00" step="1" />
+    <label>с:
+        <input type="datetime-local" id="start" step="1" />
     </label>
-    <label>По:
-        <input type="datetime-local" id="end"   value="2025-07-02T23:59:59" step="1" />
+    <label>по:
+        <input type="datetime-local" id="end" step="1" />
+    </label>
+    <label>Имя NFT:
+        <input type="text" id="tokenFilter" placeholder="имя NFT" />
     </label>
     <button id="refresh">Обновить</button>
 </div>
@@ -47,12 +63,28 @@
 <script>
     const API = '/api/nft-checker';
     document.getElementById('refresh').onclick = fetchBoard;
-    window.addEventListener('DOMContentLoaded', fetchBoard);
+
+    function setDefaultDates() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const startVal = `${year}-${month}-${day}T00:00:00`;
+        const endVal = `${year}-${month}-${day}T23:59:59`;
+        document.getElementById('start').value = startVal;
+        document.getElementById('end').value = endVal;
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        setDefaultDates();
+        fetchBoard();
+    });
 
     async function fetchBoard() {
         const w = document.getElementById('wallet').value.trim();
         const s = document.getElementById('start').value;
         const e = document.getElementById('end').value;
+        const tokenFilter = document.getElementById('tokenFilter').value.trim().toLowerCase();
         const container = document.getElementById('board');
         container.innerHTML = '';
         if (!w) {
@@ -65,19 +97,45 @@
 
         const resp = await fetch(`${API}?${ps}`);
         if (!resp.ok) {
-            container.innerHTML = `<div class="error">API ${resp.status}</div>`;
+            container.innerHTML = `<div class=\"error\">API ${resp.status}</div>`;
             return;
         }
         const { leaderboard } = await resp.json();
-        if (!leaderboard.length) {
-            container.innerHTML = '<div class="error">Нет данных за указанный период.</div>';
+
+        // Prepare data: compute token counts
+        let data = leaderboard.map(item => {
+            const totalCount = item.tokens.reduce((sum, t) => sum + t.count, 0);
+            return {
+                wallet: item.wallet,
+                total: totalCount,
+                tokens: item.tokens
+            };
+        });
+
+        // Filter by token title if provided
+        if (tokenFilter) {
+            data = data.map(item => {
+                const filteredTokens = item.tokens.filter(t =>
+                    t.title.toLowerCase().includes(tokenFilter)
+                );
+                const totalCount = filteredTokens.reduce((sum, t) => sum + t.count, 0);
+                return {
+                    wallet: item.wallet,
+                    total: totalCount,
+                    tokens: filteredTokens
+                };
+            }).filter(item => item.tokens.length > 0);
+        }
+
+        if (!data.length) {
+            container.innerHTML = '<div class="error">Нет данных за указанный период или токен не найден.</div>';
             return;
         }
 
-        leaderboard.forEach((item, i) => {
+        data.forEach((item, i) => {
             const det = document.createElement('details');
             const sum = document.createElement('summary');
-            sum.innerHTML = `<div>${i+1}</div><div>${item.wallet}</div><div>${item.total}</div>`;
+            sum.innerHTML = `<div>${i + 1}</div><div>${item.wallet}</div><div>${item.total}</div>`;
             det.appendChild(sum);
 
             const tokensDiv = document.createElement('div');
@@ -88,7 +146,6 @@
                 ti.innerHTML = `
             <span>${t.title}</span>
             <span>${t.count}</span>
-            <strong>${t.totalRep}</strong>
           `;
                 tokensDiv.appendChild(ti);
             });
