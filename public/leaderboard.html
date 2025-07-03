@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ЮМ-склейка</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 1rem; }
+        details { margin-bottom: .5rem; border: 1px solid #ccc; border-radius: 4px; }
+        summary {
+            display: grid;
+            grid-template-columns: 1fr 3fr 2fr;
+            padding: .5rem;
+            cursor: pointer;
+            background: #f9f9f9;
+        }
+        summary:hover { background: #f1f1f1; }
+        .tokens { padding: .5rem 1rem; background: #fff; }
+        .token-item {
+            display: grid;
+            grid-template-columns: 4fr 1fr 2fr;
+            padding: .25rem 0;
+            border-bottom: 1px solid #eee;
+        }
+        .token-item:last-child { border-bottom: none; }
+        .controls { margin-bottom: 1rem; }
+        .controls input { margin-right: .5rem; }
+        .error { color: red; padding: 1rem 0; }
+    </style>
+</head>
+<body>
+<h1>ЮМ-склейка</h1>
+<div class="controls">
+    <label>Wallet ID:
+        <input type="text" id="wallet" value="feed_yupiks.near" />
+    </label>
+    <label>С:
+        <input type="datetime-local" id="start" value="2025-06-30T19:50:00" step="1" />
+    </label>
+    <label>По:
+        <input type="datetime-local" id="end"   value="2025-07-02T23:59:59" step="1" />
+    </label>
+    <button id="refresh">Обновить</button>
+</div>
+<div id="board"></div>
+
+<script>
+    const API = '/api/nft-reputation';
+    document.getElementById('refresh').onclick = fetchBoard;
+    window.addEventListener('DOMContentLoaded', fetchBoard);
+
+    async function fetchBoard() {
+        const w = document.getElementById('wallet').value.trim();
+        const s = document.getElementById('start').value;
+        const e = document.getElementById('end').value;
+        const container = document.getElementById('board');
+        container.innerHTML = '';
+        if (!w) {
+            container.innerHTML = '<div class="error">Укажите wallet_id.</div>';
+            return;
+        }
+        const ps = new URLSearchParams({ wallet_id: w, limit: 200, skip: 0 });
+        if (s) ps.set('start_time', new Date(s).toISOString());
+        if (e) ps.set('end_time',   new Date(e).toISOString());
+
+        const resp = await fetch(`${API}?${ps}`);
+        if (!resp.ok) {
+            container.innerHTML = `<div class="error">API ${resp.status}</div>`;
+            return;
+        }
+        const { leaderboard } = await resp.json();
+        if (!leaderboard.length) {
+            container.innerHTML = '<div class="error">Нет данных за указанный период.</div>';
+            return;
+        }
+
+        leaderboard.forEach((item, i) => {
+            const det = document.createElement('details');
+            const sum = document.createElement('summary');
+            sum.innerHTML = `<div>${i+1}</div><div>${item.wallet}</div><div>${item.total}</div>`;
+            det.appendChild(sum);
+
+            const tokensDiv = document.createElement('div');
+            tokensDiv.className = 'tokens';
+            item.tokens.forEach(t => {
+                const ti = document.createElement('div');
+                ti.className = 'token-item';
+                ti.innerHTML = `
+            <span>${t.title}</span>
+            <span>${t.count}</span>
+            <strong>${t.totalRep}</strong>
+          `;
+                tokensDiv.appendChild(ti);
+            });
+            det.appendChild(tokensDiv);
+            container.appendChild(det);
+        });
+    }
+</script>
+</body>
+</html>

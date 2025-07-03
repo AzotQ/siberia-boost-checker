@@ -1,0 +1,11 @@
+{
+  "name": "grecha-leaderboard",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "vercel-build": "echo \"OK\""
+  },
+  "dependencies": {
+    "node-fetch": "^3.3.1"
+  }
+}
