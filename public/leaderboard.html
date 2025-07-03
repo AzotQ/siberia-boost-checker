@@ -40,6 +40,9 @@
     <label>По:
         <input type="datetime-local" id="end"   value="2025-07-02T23:59:59" step="1" />
     </label>
+    <label>Токен:
+        <input type="text" id="tokenFilter" placeholder="Название токена (часть)" />
+    </label>
     <button id="refresh">Обновить</button>
 </div>
 <div id="board"></div>
@@ -53,6 +56,7 @@
         const w = document.getElementById('wallet').value.trim();
         const s = document.getElementById('start').value;
         const e = document.getElementById('end').value;
+        const tokenFilter = document.getElementById('tokenFilter').value.trim().toLowerCase();
         const container = document.getElementById('board');
         container.innerHTML = '';
         if (!w) {
@@ -69,12 +73,29 @@
             return;
         }
         const { leaderboard } = await resp.json();
-        if (!leaderboard.length) {
-            container.innerHTML = '<div class="error">Нет данных за указанный период.</div>';
+
+        // Filter by token title if provided
+        let data = leaderboard;
+        if (tokenFilter) {
+            data = leaderboard.map(item => {
+                const filteredTokens = item.tokens.filter(t =>
+                    t.title.toLowerCase().includes(tokenFilter)
+                );
+                const totalFilteredRep = filteredTokens.reduce((sum, t) => sum + t.totalRep, 0);
+                return {
+                    wallet: item.wallet,
+                    total: totalFilteredRep,
+                    tokens: filteredTokens
+                };
+            }).filter(item => item.tokens.length > 0);
+        }
+
+        if (!data.length) {
+            container.innerHTML = '<div class="error">Нет данных за указанный период или токен не найден.</div>';
             return;
         }
 
-        leaderboard.forEach((item, i) => {
+        data.forEach((item, i) => {
             const det = document.createElement('details');
             const sum = document.createElement('summary');
             sum.innerHTML = `<div>${i+1}</div><div>${item.wallet}</div><div>${item.total}</div>`;
