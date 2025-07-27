@@ -2,159 +2,602 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>SIBERIA nft checker</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="shortcut icon" href="public/favicon.ico" type="image/x-icon">
+    <link rel="icon" href="public/favicon.ico" type="image/x-icon">
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <title>SIBERIA txn checker</title>
     <style>
-        body { font-family: Arial, sans-serif; padding: 1rem; }
-        details { margin-bottom: .5rem; border: 1px solid #ccc; border-radius: 4px; }
+        body {
+            font-family: Arial, sans-serif;
+            padding: 1rem;
+            margin: 0 auto;
+            max-width: 840px;
+        }
+        .controls {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        .controls label {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: flex-end;
+        }
+        .mode-select,
+        .controls-wrapper,
+        .filters-wrapper,
+        .sort-wrapper {
+            display: flex;
+            width: 100%;
+        }
+
+        details {
+            margin-bottom: 0.5rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
         summary {
-            display: grid;
-            grid-template-columns: 1fr 3fr 2fr;
-            padding: .5rem;
+            display: flex;
+            gap: 8px;
+            padding: 0.5rem;
             cursor: pointer;
             background: #f9f9f9;
+            box-sizing: border-box;
+            align-items: center;
         }
-        summary:hover { background: #f1f1f1; }
-        .tokens { padding: .5rem 1rem; background: #fff; }
+        summary:hover {
+            background: #f1f1f1;
+        }
+        summary .wallet-value {
+            width: calc(100% - 100px);
+        }
+        summary .summary-count {
+            display: flex;
+            flex-direction: column;
+            width: 150px;
+            justify-content: flex-end;
+            gap: 5px;
+            text-align: end;
+            align-items: center;
+            white-space: nowrap;
+        }
+        .tokens {
+            padding: 0.5rem 1rem 50px;
+            background: #fff;
+            position: relative;
+        }
         .token-item {
             display: grid;
-            grid-template-columns: 4fr 1fr;
-            padding: .25rem 0;
+            grid-template-columns: 10fr 1fr 1.5fr;
+            padding: 0.25rem 0;
             border-bottom: 1px solid #eee;
         }
-        .controls { margin-bottom: 1rem; }
-        .controls input { margin-right: .5rem; }
-        .error { color: red; padding: 1rem 0; }
+        .token-item:last-child {
+            border-bottom: none;
+        }
+        .copy-btn {
+            position: absolute;
+            bottom: 0.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.9rem;
+            padding: 0.2rem 0.5rem;
+        }
+        .controls input,
+        .controls select {
+            margin-right: 0.5rem;
+            padding: 0.3rem 0.5rem;
+            font-size: 1rem;
+        }
+        .error {
+            color: red;
+            padding: 1rem 0;
+        }
+        button#refresh,
+        button#exportCsv {
+            display: flex;
+            margin: 0 auto;
+            padding: 0.5rem 1rem;
+            font-size: 1rem;
+        }
+        .loader-container {
+            position: relative;
+            width: 100%;
+            height: 60px;
+            margin: 30px 0 0;
+        }
+        .loader-container .loader {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            margin: auto;
+        }
+        .clock .loader {
+            width: 100px;
+            height: 60px;
+        }
+        .clock .loader .arc {
+            position: absolute;
+            top: -10px;
+            right: 5px;
+            margin: 0 auto;
+            border: 2px solid #327ac6;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+        }
+        .clock .loader .arc::after,
+        .clock .loader .arc::before {
+            content: '';
+            position: absolute;
+            top: 4%;
+            left: 48%;
+            width: 4%;
+            height: 46%;
+            background-color: #2b00ff;
+            transform-origin: 50% 100%;
+            border-radius: 5px;
+            animation: rotate 2s infinite linear;
+        }
+        .clock .loader .arc::after {
+            height: 36%;
+            top: 14%;
+            animation-duration: 12s;
+        }
+        @keyframes rotate {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
         @media (max-width: 480px) {
             .controls {
                 display: flex;
                 flex-direction: column;
-                align-items: flex-start;
-                gap: 3px;
+                gap: 5px;
+                align-items: center;
             }
             .controls label {
-                display: flex;
-                flex-direction: row;
-                justify-content: space-between;
-                width: 70%;
+                font-size: 13px;
+                line-height: 1.2;
+            }
+            .controls input, .controls select {
+                padding: 1.5px 2px;
+                font-size: 13px;
+                margin: 0 2px;
             }
             summary {
-                grid-template-columns: 0.5fr 6fr 1fr;
+                justify-content: flex-start;
+                align-items: center;
+                width: 100%;
             }
+            summary .wallet-value {
+                width: calc(100% - 100px);
+            }
+            summary .summary-count {
+                gap: 5px;
+                align-items: center;
+                width: 150px;
+                white-space: nowrap;
+            }
+            summary .summary-count > div {
+                width: 100%;
+                max-width: 100%;
+            }
+            .mode-select, .controls-wrapper, .filters-wrapper, .sort-wrapper {
+                flex-direction: column;
+                gap: 5px;
+                margin: 2px 0;
+            }
+            .filters-wrapper {
+                flex-flow: wrap;
+            }
+        }
+
+        .mode-select,
+        .controls label#symbolLabel {
+            display: none !important;
         }
     </style>
 </head>
 <body>
-<h1>SIBERIA nft checker</h1>
+<h1>SIBERIA txn checker</h1>
+
 <div class="controls">
-    <label>Wallet:
-        <input type="text" id="wallet" value="siberia_collection.near" />
-    </label>
-    <label>с:
-        <input type="datetime-local" id="start" step="1" />
-    </label>
-    <label>по:
-        <input type="datetime-local" id="end" step="1" />
-    </label>
-    <label>Имя NFT:
-        <input type="text" id="tokenFilter" placeholder="имя NFT" />
-    </label>
-    <button id="refresh">Обновить</button>
+    <div class="mode-select">
+        <label>
+            Mode:
+            <select id="mode">
+                <option value="token+nft" selected>token+nft</option>
+                <option value="token+nft+rep">token+nft+rep</option>
+                <option value="nft+rep">nft+rep</option>
+                <option value="token">token</option>
+                <option value="nft">nft</option>
+            </select>
+        </label>
+    </div>
+
+    <div class="controls-wrapper">
+        <label>
+            Wallet ID:
+            <input type="text" id="wallet" value="sbr_nora.near" />
+        </label>
+        <label>
+            From:
+            <input type="datetime-local" id="start" step="1" />
+        </label>
+        <label>
+            On:
+            <input type="datetime-local" id="end" step="1" />
+        </label>
+    </div>
+
+    <div class="filters-wrapper">
+        <label id="tokenFilterLabel">
+            NFT title:
+            <input type="text" id="tokenFilter" placeholder="Имя NFT" />
+        </label>
+        <label>
+            Direction:
+            <select id="direction">
+                <option value="in" selected>in</option>
+                <option value="out">out</option>
+            </select>
+        </label>
+        <label id="symbolLabel">
+            Token:
+            <select id="symbol">
+                <option value="SBR" selected>SBR</option>
+                <option value="Darai">Darai</option>
+                <option value="GRECHA">GRECHA</option>
+                <option value="YUM">YUM</option>
+                <option value="JHOLUDI">JHOLUDI</option>
+                <option value="NTDarai">NTDarai</option>
+                <option value="HOPE">HOPE</option>
+                <option value="YUPLAND">YUPLAND</option>
+            </select>
+        </label>
+
+        <label>
+            Search by wallet:
+            <input type="text" id="walletSearch" placeholder="Поиск кошелька" />
+        </label>
+    </div>
+
+    <button id="refresh">Refresh</button>
+
+    <div class="sort-wrapper">
+        <label>
+            Sorting:
+            <select id="sortBy">
+                <option value="firstTxTsAsc" selected>First txn ↑</option>
+                <option value="firstTxTsDesc">First txn ↓</option>
+                <option value="yumDesc">Tokens Count ↓</option>
+                <option value="yumAsc">Tokens Count ↑</option>
+                <option value="nftCountDesc">NFT Count ↓</option>
+                <option value="nftCountAsc">NFT Count ↑</option>
+                <option value="repDesc">Rep Count ↓</option>
+                <option value="repAsc">Rep Count ↑</option>
+            </select>
+        </label>
+    </div>
 </div>
+
+<div id="spinner" class="loader-container clock" style="display:none;">
+    <div class="loader">
+        <div class="arc"></div>
+        <div class="morj"><img src="public/morj.gif" width="100" height="50" alt="loading" /></div>
+    </div>
+</div>
+
 <div id="board"></div>
 
-<script>
-    const API = '/api/nft-checker';
-    document.getElementById('refresh').onclick = fetchBoard;
+<button id="exportCsv">Export</button>
 
-    function setDefaultDates() {
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const day = String(now.getDate()).padStart(2, '0');
-        const startVal = `${year}-${month}-${day}T00:00:00`;
-        const endVal = `${year}-${month}-${day}T23:59:59`;
-        document.getElementById('start').value = startVal;
-        document.getElementById('end').value = endVal;
-    }
+<script>
+    const API = '/api/nft-reputation';
+    let currentData = [];
+    let filteredData = [];
+    let currentSymbol = 'YUM';
+
+    let debounceTimer;
 
     window.addEventListener('DOMContentLoaded', () => {
         setDefaultDates();
+        updateUIByMode();
         fetchBoard();
     });
 
+    document.getElementById('refresh').onclick = () => {
+        resetAndFetch();
+    };
+
+    document.getElementById('mode').addEventListener('change', () => {
+        updateUIByMode();
+        resetAndFetch();
+    });
+
+    document.getElementById('walletSearch').addEventListener('input', debounceFilterSort);
+    document.getElementById('sortBy').addEventListener('change', debounceFilterSort);
+
+    document.getElementById('tokenFilter').addEventListener('input', debounceFilterSort);
+    document.getElementById('direction').addEventListener('change', debounceFilterSort);
+    document.getElementById('symbol').addEventListener('change', debounceFilterSort);
+
+    function debounceFilterSort(delay = 300) {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            applyFilterSort();
+            renderFilteredItems();
+        }, delay);
+    }
+
+    function updateUIByMode() {
+        const mode = document.getElementById('mode').value;
+
+        const tokenFilterLabel = document.getElementById('tokenFilterLabel');
+        const symbolLabel = document.getElementById('symbolLabel');
+        const sortBySelect = document.getElementById('sortBy');
+
+        if (mode === 'token' || mode === 'nft+rep') {
+            tokenFilterLabel.style.display = 'none';
+        } else {
+            tokenFilterLabel.style.display = '';
+        }
+
+        if (mode === 'nft' || mode === 'nft+rep') {
+            symbolLabel.style.display = 'none';
+        } else {
+            symbolLabel.style.display = '';
+        }
+
+        let optionsHtml = `
+      <option value="firstTxTsAsc" selected>First txn ↑</option>
+      <option value="firstTxTsDesc">First txn ↓</option>
+    `;
+
+        if (mode !== 'nft' && mode !== 'nft+rep') {
+            optionsHtml += `
+        <option value="yumDesc">Tokens Count ↓</option>
+        <option value="yumAsc">Tokens Count ↑</option>
+      `;
+        }
+        if (mode !== 'token' && mode !== 'token+nft') {
+            if (mode !== 'nft') {
+                optionsHtml += `
+          <option value="repDesc">Rep Count ↓</option>
+          <option value="repAsc">Rep Count ↑</option>
+        `;
+            }
+        }
+        if (mode !== 'token') {
+            optionsHtml += `
+        <option value="nftCountDesc">NFT Count ↓</option>
+        <option value="nftCountAsc">NFT Count ↑</option>
+      `;
+        }
+
+        sortBySelect.innerHTML = optionsHtml;
+    }
+
+    function resetAndFetch() {
+        currentData = [];
+        filteredData = [];
+        document.getElementById('board').innerHTML = '';
+        fetchBoard();
+    }
+
+    function setDefaultDates() {
+        const now = new Date();
+        const Y = now.getFullYear(), M = String(now.getMonth()+1).padStart(2,'0');
+        const D = String(now.getDate()).padStart(2,'0');
+        document.getElementById('start').value = `${Y}-${M}-${D}T00:00:00`;
+        document.getElementById('end').value   = `${Y}-${M}-${D}T23:59:59`;
+    }
+
     async function fetchBoard() {
+        const spinner = document.getElementById('spinner');
+        spinner.style.display = 'block';
+
         const w = document.getElementById('wallet').value.trim();
         const s = document.getElementById('start').value;
         const e = document.getElementById('end').value;
-        const tokenFilter = document.getElementById('tokenFilter').value.trim().toLowerCase();
-        const container = document.getElementById('board');
-        container.innerHTML = '';
+        const tf= document.getElementById('tokenFilter').value.trim().toLowerCase();
+        const direction = document.getElementById('direction').value;
+        const symbol = document.getElementById('symbol').value;
+        const mode = document.getElementById('mode').value;
+        currentSymbol = symbol;
+
+        const out = document.getElementById('board');
+        out.innerHTML = '';
+
         if (!w) {
-            container.innerHTML = '<div class="error">Укажите wallet_id.</div>';
+            out.innerHTML = '<div class="error">Укажите wallet_id.</div>';
+            spinner.style.display = 'none';
             return;
         }
-        const ps = new URLSearchParams({ wallet_id: w, limit: 200, skip: 0 });
+
+        const ps = new URLSearchParams({ wallet_id: w, limit: 200, skip: 0, mode });
         if (s) ps.set('start_time', new Date(s).toISOString());
-        if (e) ps.set('end_time',   new Date(e).toISOString());
+        if (e) ps.set('end_time', new Date(e).toISOString());
+        ps.set('direction', direction);
+        ps.set('symbol', symbol);
 
-        const resp = await fetch(`${API}?${ps}`);
-        if (!resp.ok) {
-            container.innerHTML = `<div class=\"error\">API ${resp.status}</div>`;
-            return;
+        try {
+            const resp = await fetch(`${API}?${ps}`);
+            if (!resp.ok) {
+                out.innerHTML = `<div class="error">API ${resp.status}</div>`;
+                spinner.style.display = 'none';
+                return;
+            }
+            let { leaderboard } = await resp.json();
+
+            if (tf) {
+                leaderboard = leaderboard.map(item => {
+                    const filtered = item.tokens.filter(t => t.title.toLowerCase().includes(tf));
+                    const totalRep = filtered.reduce((sum, t) => sum + t.totalRep, 0);
+                    const nftCnt = filtered.reduce((sum, t) => sum + t.count, 0);
+                    return {
+                        wallet: item.wallet,
+                        total: totalRep,
+                        nftCount: nftCnt,
+                        tokens: filtered,
+                        yum: item.yum
+                    };
+                }).filter(item => item.tokens.length);
+            }
+
+            if (!leaderboard.length) {
+                out.innerHTML = '<div class="error">Нет данных за указанный период или токен не найден.</div>';
+                spinner.style.display = 'none';
+                currentData = [];
+                return;
+            }
+
+            currentData = leaderboard;
+            applyFilterSort();
+            renderFilteredItems();
+
+        } catch (err) {
+            out.innerHTML = `<div class="error">Ошибка запроса: ${err.message}</div>`;
+        } finally {
+            spinner.style.display = 'none';
         }
-        const { leaderboard } = await resp.json();
+    }
 
-        // Prepare data: compute token counts
-        let data = leaderboard.map(item => {
-            const totalCount = item.tokens.reduce((sum, t) => sum + t.count, 0);
-            return {
-                wallet: item.wallet,
-                total: totalCount,
-                tokens: item.tokens
-            };
+    function applyFilterSort() {
+        const mode = document.getElementById('mode').value;
+        const search = document.getElementById('walletSearch').value.trim().toLowerCase();
+        const sortBy = document.getElementById('sortBy').value;
+
+        filteredData = currentData.filter(item =>
+            item.wallet.toLowerCase().includes(search)
+        );
+
+        filteredData.sort((a, b) => {
+            switch (sortBy) {
+                case 'firstTxTsDesc':
+                    if (!a.firstTxTs) return 1;
+                    if (!b.firstTxTs) return -1;
+                    return b.firstTxTs.localeCompare(a.firstTxTs);
+                case 'firstTxTsAsc':
+                    if (!a.firstTxTs) return 1;
+                    if (!b.firstTxTs) return -1;
+                    return a.firstTxTs.localeCompare(b.firstTxTs);
+                case 'yumAsc':
+                    return a.yum - b.yum;
+                case 'yumDesc':
+                    return b.yum - a.yum;
+                case 'nftCountAsc':
+                    return a.nftCount - b.nftCount;
+                case 'nftCountDesc':
+                    return b.nftCount - a.nftCount;
+                case 'repAsc':
+                    return a.total - b.total;
+                case 'repDesc':
+                    return b.total - a.total;
+                default:
+                    return 0;
+            }
         });
+    }
 
-        // Filter by token title if provided
-        if (tokenFilter) {
-            data = data.map(item => {
-                const filteredTokens = item.tokens.filter(t =>
-                    t.title.toLowerCase().includes(tokenFilter)
-                );
-                const totalCount = filteredTokens.reduce((sum, t) => sum + t.count, 0);
-                return {
-                    wallet: item.wallet,
-                    total: totalCount,
-                    tokens: filteredTokens
-                };
-            }).filter(item => item.tokens.length > 0);
-        }
+    function renderFilteredItems() {
+        const mode = document.getElementById('mode').value;
+        const out = document.getElementById('board');
+        out.innerHTML = '';
 
-        if (!data.length) {
-            container.innerHTML = '<div class="error">Нет данных за указанный период или токен не найден.</div>';
-            return;
-        }
+        const showTokens = (mode === 'token+nft+rep' || mode === 'token' || mode === 'token+nft' || mode === 'nft+rep' || mode === 'nft');
+        const showYumCount = (mode === 'token+nft+rep' || mode === 'token' || mode === 'token+nft');
+        const showNFTCount = (mode !== 'token');
 
-        data.forEach((item, i) => {
+        filteredData.forEach((item, i) => {
             const det = document.createElement('details');
             const sum = document.createElement('summary');
-            sum.innerHTML = `<div>${i + 1}</div><div>${item.wallet}</div><div>${item.total}</div>`;
+
+            sum.innerHTML = `
+        <div>${i + 1}</div>
+        <div class="wallet-value">${item.wallet}</div>
+        <div class="summary-count">
+          ${showYumCount ? `<div>${item.yum?.toLocaleString?.() || 0} ${currentSymbol}</div>` : ''}
+          ${showNFTCount ? `<div>${item.nftCount} NFT</div>` : ''}
+          ${(mode === 'token+nft+rep' || mode === 'nft+rep') ? `<div>${item.total.toLocaleString()} rep</div>` : ''}
+        </div>
+      `;
+
             det.appendChild(sum);
 
             const tokensDiv = document.createElement('div');
             tokensDiv.className = 'tokens';
-            item.tokens.forEach(t => {
-                const ti = document.createElement('div');
-                ti.className = 'token-item';
-                ti.innerHTML = `
-            <span>${t.title}</span>
-            <span>${t.count}</span>
-          `;
-                tokensDiv.appendChild(ti);
-            });
+
+            const btn = document.createElement('button');
+            btn.className = 'copy-btn';
+            btn.textContent = 'Copy';
+            btn.onclick = () => {
+                const header = 'Title\tCount\tTotalRep\n';
+                const rows = item.tokens.map(t => `${t.title}\t${t.count}\t${t.totalRep}`).join('\n');
+                navigator.clipboard.writeText(header + rows);
+            };
+            tokensDiv.appendChild(btn);
+
+            if (showTokens) {
+                item.tokens.forEach(t => {
+                    const ti = document.createElement('div');
+                    ti.className = 'token-item';
+                    ti.innerHTML = `<span>${t.title}</span><span>${t.count}</span><strong>${t.totalRep}</strong>`;
+                    tokensDiv.appendChild(ti);
+                });
+            }
+
             det.appendChild(tokensDiv);
-            container.appendChild(det);
+            out.appendChild(det);
         });
+    }
+
+    document.getElementById('exportCsv').addEventListener('click', () => {
+        exportExcel();
+    });
+
+    function exportExcel() {
+        if (!currentData.length) {
+            alert('Нет данных для экспорта.');
+            return;
+        }
+
+        const data = [];
+        // Заголовок
+        data.push(['#', 'Wallet', `Amount of ${currentSymbol}`, 'Amount of NFT', 'Amount of Rep']);
+
+        // Строки, где числовые поля как числа
+        filteredData.forEach((item, idx) => {
+            data.push([
+                idx + 1,
+                item.wallet,
+                typeof item.yum === 'number' ? item.yum : Number(item.yum) || 0,
+                typeof item.nftCount === 'number' ? item.nftCount : Number(item.nftCount) || 0,
+                typeof item.total === 'number' ? item.total : Number(item.total) || 0
+            ]);
+        });
+
+        const worksheet = XLSX.utils.aoa_to_sheet(data);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Leaderboard');
+
+        const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([wbout], { type: 'application/octet-stream' });
+
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const s = document.getElementById('start').value;
+        const e = document.getElementById('end').value;
+        a.href = url;
+        a.download = `yupland-checker_${s}-${e}.xlsx`;
+        a.click();
+        URL.revokeObjectURL(url);
     }
 </script>
 </body>
