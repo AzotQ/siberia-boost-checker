@@ -114,7 +114,7 @@ export default async function handler(req, res) {
                 firstNftTs: nftFirstTs[wallet] || null
             }));
 
-        const yumTransfers = await fetchYUMTransfers(walletId, 'YUM', 200, startNano, endNano);
+        const yumTransfers = await fetchYUMTransfers(walletId, 'SBR', 200, startNano, endNano);
         const yumBySender = {};
 
         yumTransfers.forEach(tx => {
