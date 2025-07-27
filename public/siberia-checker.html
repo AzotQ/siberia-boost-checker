@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>SIBERIA txn checker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 1rem;
+            margin: 0 auto;
+            max-width: 840px;
+        }
+        .controls {
+            display: flex;
+        }
+        details {
+            margin-bottom: .5rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        summary {
+            display: flex;
+            gap: 8px;
+            padding: .5rem;
+            cursor: pointer;
+            background: #f9f9f9;
+            box-sizing: border-box;
+            align-items: center;
+        }
+        summary:hover { background: #f1f1f1; }
+        summary .wallet-value {
+            width: calc(100% - 100px);
+        }
+        summary .summary-count {
+            display: flex;
+            flex-direction: column;
+            width: 100px;
+            justify-content: flex-end;
+            gap: 5px;
+            text-align: end;
+            align-items: center;
+            white-space: nowrap;
+        }
+
+        .tokens {
+            padding: .5rem 1rem 50px;
+            background: #fff;
+            position: relative;
+        }
+        .token-item {
+            display: grid;
+            grid-template-columns: 10fr 1fr 1.5fr;
+            padding: .25rem 0;
+            border-bottom: 1px solid #eee;
+        }
+        .token-item:last-child { border-bottom: none; }
+        .copy-btn {
+            position: absolute;
+            bottom: .5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: .9rem;
+            padding: .2rem .5rem;
+        }
+        .controls { margin-bottom: 1rem; }
+        .controls input { margin-right: .5rem; }
+        .error { color: red; padding: 1rem 0; }
+        button#exportCsv {
+            display: flex;
+            margin: 0 auto;
+        }
+
+        .loader-container {
+            position: relative;
+            width: 100%;
+            height: 60px;
+            margin: 30px 0 0;
+        }
+        .loader-container .loader {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            margin: auto;
+        }
+        .clock .loader {
+            width: 100px;
+            height: 60px;
+        }
+        .clock .loader .arc {
+            position: absolute;
+            top: -10px;
+            right: 5px;
+            margin: 0 auto;
+            border: 2px solid #327ac6;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+        }
+        .clock .loader .arc::after, .clock .loader .arc::before {
+            content: '';
+            position: absolute;
+            top: 4%;
+            left: 48%;
+            width: 4%;
+            height: 46%;
+            background-color: #2b00ff;
+            transform-origin: 50% 100%;
+            border-radius: 5px;
+            animation: rotate 2s infinite linear;
+        }
+        .clock .loader .arc::after {
+            height: 36%;
+            top: 14%;
+            animation-duration: 12s;
+        }
+        @keyframes rotate {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .controls {
+                display: flex;
+                flex-direction: column;
+                gap: 5px;
+                align-items: center;
+            }
+            summary {
+                justify-content: flex-start;
+                align-items: center;
+                width: 100%;
+            }
+            summary .wallet-value {
+                width: calc(100% - 100px);
+            }
+            summary .summary-count {
+                gap: 5px;
+                align-items: center;
+                width: 100px;
+                white-space: nowrap;
+            }
+            summary .summary-count > div {
+                width: 100%;
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+<h1>SIBERIA txn checker</h1>
+
+<div class="controls">
+    <label>Wallet ID:
+        <input type="text" id="wallet" value="sbr_nora.near" />
+    </label>
+    <label>С:
+        <input type="datetime-local" id="start" step="1" />
+    </label>
+    <label>По:
+        <input type="datetime-local" id="end" step="1" />
+    </label>
+    <label>Имя NFT:
+        <input type="text" id="tokenFilter" placeholder="Имя NFT" />
+    </label>
+    <button id="refresh">Обновить</button>
+</div>
+
+<div id="spinner" class="loader-container clock">
+    <div class="loader">
+        <div class="arc"></div>
+        <div class="morj"><img src="public/morj.gif" width="100" height="50"></div>
+    </div>
+</div>
+
+<div id="board"></div>
+
+<button id="exportCsv">Export CSV</button>
+
+<script>
+    const API = '/api/nft-reputation';
+    let currentData = [];
+
+    window.addEventListener('DOMContentLoaded', () => {
+        setDefaultDates();
+        fetchBoard();
+    });
+    document.getElementById('refresh').onclick = fetchBoard;
+    document.getElementById('exportCsv').onclick = exportCsv;
+
+    function setDefaultDates() {
+        const now = new Date();
+        const Y = now.getFullYear(), M = String(now.getMonth()+1).padStart(2,'0');
+        const D = String(now.getDate()).padStart(2,'0');
+        document.getElementById('start').value = `${Y}-${M}-${D}T00:00:00`;
+        document.getElementById('end').value   = `${Y}-${M}-${D}T23:59:59`;
+    }
+
+    async function fetchBoard() {
+        const spinner = document.getElementById('spinner');
+        spinner.style.display = 'block';
+
+        const w = document.getElementById('wallet').value.trim();
+        const s = document.getElementById('start').value;
+        const e = document.getElementById('end').value;
+        const tf= document.getElementById('tokenFilter').value.trim().toLowerCase();
+        const out = document.getElementById('board');
+        out.innerHTML = '';
+
+        if (!w) {
+            out.innerHTML = '<div class="error">Укажите wallet_id.</div>';
+            spinner.style.display = 'none';
+            return;
+        }
+
+        const ps = new URLSearchParams({ wallet_id: w, limit: 200, skip: 0 });
+        if (s) ps.set('start_time', new Date(s).toISOString());
+        if (e) ps.set('end_time',   new Date(e).toISOString());
+
+        const resp = await fetch(`${API}?${ps}`);
+        if (!resp.ok) {
+            out.innerHTML = `<div class="error">API ${resp.status}</div>`;
+            return;
+        }
+        let { leaderboard } = await resp.json();
+
+        if (tf) {
+            leaderboard = leaderboard.map(item => {
+                const filtered = item.tokens.filter(t => t.title.toLowerCase().includes(tf));
+                const totalRep = filtered.reduce((sum, t) => sum + t.totalRep, 0);
+                const nftCnt   = filtered.reduce((sum, t) => sum + t.count, 0);
+                return {
+                    wallet:   item.wallet,
+                    total:    totalRep,
+                    nftCount: nftCnt,
+                    tokens:   filtered,
+                    yum:      item.yum
+                };
+            }).filter(item => item.tokens.length);
+        }
+
+        if (!leaderboard.length) {
+            out.innerHTML = '<div class="error">Нет данных за указанный период или токен не найден.</div>';
+            spinner.style.display = 'none';
+            currentData = [];
+            return;
+        }
+
+        currentData = leaderboard;  // save for CSV
+
+        leaderboard.forEach((item, i) => {
+            const det = document.createElement('details');
+            const sum = document.createElement('summary');
+            sum.innerHTML = `
+                <div>${i+1}</div>
+                <div class="wallet-value">${item.wallet}</div>
+                <div class="summary-count">
+                <div>${item.yum?.toLocaleString?.() || 0} SBR</div>
+                <div>${item.nftCount} шт.</div>
+                <div>${item.total.toLocaleString()} rep</div>
+                </div>
+            `;
+            det.appendChild(sum);
+
+            const tokensDiv = document.createElement('div');
+            tokensDiv.className = 'tokens';
+
+            // Copy button
+            const btn = document.createElement('button');
+            btn.className = 'copy-btn';
+            btn.textContent = 'Copy';
+            btn.onclick = () => {
+                // generate tabular text
+                const header = 'Title\tCount\tTotalRep\n';
+                const rows = item.tokens.map(t =>
+                    `${t.title}\t${t.count}\t${t.totalRep}`
+                ).join('\n');
+                const text = header + rows;
+                navigator.clipboard.writeText(text);
+            };
+            tokensDiv.appendChild(btn);
+
+            // список токенов
+            item.tokens.forEach(t => {
+                const ti = document.createElement('div');
+                ti.className = 'token-item';
+                ti.innerHTML = `
+            <span>${t.title}</span>
+            <span>${t.count}</span>
+            <strong>${t.totalRep}</strong>
+          `;
+                tokensDiv.appendChild(ti);
+            });
+
+            det.appendChild(tokensDiv);
+            out.appendChild(det);
+
+            spinner.style.display = 'none';
+        });
+    }
+
+    function exportCsv() {
+        if (!currentData.length) {
+            alert('Нет данных для экспорта.');
+            return;
+        }
+        // Header
+        const header = ['#','Wallet','Amount of SBR','Amount of NFT','Amount of Rep'];
+        const rows = currentData.map((item, idx) => [
+            idx+1,
+            `"${item.wallet}"`,
+            item.yum,
+            item.nftCount,
+            item.total
+        ]);
+        const csvContent = [header, ...rows]
+            .map(r => r.join(','))
+            .join('\r\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        const s = document.getElementById('start').value;
+        const e = document.getElementById('end').value;
+        a.href     = url;
+        a.download = `siberia-txn_${s}-${e}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+</script>
+</body>
+</html>
