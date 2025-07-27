@@ -1,3 +1,8 @@
+import fetch from 'node-fetch';
+
+const BASE_URL = 'https://dialog-tbot.com/history/ft-transfers/';
+const DEFAULT_LIMIT = 100;
+
 export async function fetchYUMTransfers(walletId, symbol = 'SBR', batch = DEFAULT_LIMIT, startNano = null, endNano = null) {
     const all = [];
     for (let skip = 0; ; skip += batch) {
