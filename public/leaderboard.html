@@ -199,7 +199,8 @@
         }
 
         .mode-select,
-        .controls label#symbolLabel {
+        .controls label#symbolLabel,
+        #directionLabel {
             display: none !important;
         }
     </style>
@@ -241,7 +242,7 @@
             NFT title:
             <input type="text" id="tokenFilter" placeholder="Имя NFT" />
         </label>
-        <label>
+        <label id="directionLabel">
             Direction:
             <select id="direction">
                 <option value="in" selected>in</option>
