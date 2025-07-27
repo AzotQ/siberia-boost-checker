@@ -3,12 +3,23 @@ import fetch from 'node-fetch';
 const BASE_URL = 'https://dialog-tbot.com/history/ft-transfers/';
 const DEFAULT_LIMIT = 100;
 
-export async function fetchYUMTransfers(walletId, symbol = 'SBR', batch = DEFAULT_LIMIT, startNano = null, endNano = null) {
+function tryParseBigInt(value) {
+    try {
+        if (typeof value === 'string' && /^\d+$/.test(value)) {
+            return BigInt(value);
+        }
+        return null;
+    } catch {
+        return null;
+    }
+}
+
+export async function fetchYUMTransfers(walletId, symbol = 'YUM', batch = DEFAULT_LIMIT, startNano = null, endNano = null, direction = 'in') {
     const all = [];
     for (let skip = 0; ; skip += batch) {
         const url = new URL(BASE_URL);
         url.searchParams.set('wallet_id', walletId);
-        url.searchParams.set('direction', 'in');
+        url.searchParams.set('direction', direction);
         url.searchParams.set('symbol', symbol);
         url.searchParams.set('limit', batch);
         url.searchParams.set('skip', skip);
@@ -24,15 +35,20 @@ export async function fetchYUMTransfers(walletId, symbol = 'SBR', batch = DEFAUL
 
     return all
         .filter(tx => {
-            const ts = BigInt(tx.timestamp_nanosec || 0);
-            if (startNano !== null && ts < startNano) return false;
-            if (endNano   !== null && ts > endNano)   return false;
+            const ts = tryParseBigInt(tx.timestamp_nanosec);
+            if (startNano !== null && (ts === null || ts < startNano)) return false;
+            if (endNano !== null && (ts === null || ts > endNano)) return false;
             return true;
         })
         .map(tx => {
             const decimals = Number(tx.decimals || 0);
-            const raw = BigInt(tx.amount || '0');
-            const amount = Number(raw) / 10 ** decimals;
-            return { from: tx.from, amount };
+            const rawAmount = tryParseBigInt(tx.amount) || 0n;
+            const amount = Number(rawAmount) / 10 ** decimals;
+            return {
+                from: tx.from,
+                to: tx.to || null,
+                amount,
+                timestamp_nanosec: tx.timestamp_nanosec
+            };
         });
 }
