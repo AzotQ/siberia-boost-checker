@@ -118,10 +118,10 @@ export default async function handler(req, res) {
         const yumBySender = {};
 
         yumTransfers.forEach(tx => {
-            const { from, amount } = tx;
-            if (!from || typeof amount !== 'number') return;
-            if (!yumBySender[from]) yumBySender[from] = 0;
-            yumBySender[from] += amount;
+            const { to, amount } = tx;
+            if (!to || typeof amount !== 'number') return;
+            if (!yumBySender[to]) yumBySender[to] = 0;
+            yumBySender[to] += amount;
         });
 
         leaderboard.forEach(entry => {
