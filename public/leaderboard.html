@@ -122,7 +122,7 @@
         }
         .clock .loader .arc {
             position: absolute;
-            top: -10px;
+            top: 5px;
             right: 5px;
             margin: 0 auto;
             border: 2px solid #327ac6;
@@ -291,7 +291,7 @@
 <div id="spinner" class="loader-container clock" style="display:none;">
     <div class="loader">
         <div class="arc"></div>
-        <div class="morj"><img src="public/rabbit.jpg" width="100" height="50" alt="loading" /></div>
+        <div class="morj"><img src="public/rabbit.gif" width="100" height="100" alt="loading" /></div>
     </div>
 </div>
 
@@ -571,7 +571,7 @@
 
         const data = [];
         // Заголовок
-        data.push(['#', 'Wallet', `Amount of ${currentSymbol}`, 'Amount of NFT', 'Amount of Rep']);
+        data.push(['#', 'Wallet', `Amount of ${currentSymbol}`, 'Amount of NFT']);
 
         // Строки, где числовые поля как числа
         filteredData.forEach((item, idx) => {
@@ -579,8 +579,7 @@
                 idx + 1,
                 item.wallet,
                 typeof item.yum === 'number' ? item.yum : Number(item.yum) || 0,
-                typeof item.nftCount === 'number' ? item.nftCount : Number(item.nftCount) || 0,
-                typeof item.total === 'number' ? item.total : Number(item.total) || 0
+                typeof item.nftCount === 'number' ? item.nftCount : Number(item.nftCount) || 0
             ]);
         });
 
@@ -596,7 +595,7 @@
         const s = document.getElementById('start').value;
         const e = document.getElementById('end').value;
         a.href = url;
-        a.download = `yupland-checker_${s}-${e}.xlsx`;
+        a.download = `siberia-checker_${s}-${e}.xlsx`;
         a.click();
         URL.revokeObjectURL(url);
     }
