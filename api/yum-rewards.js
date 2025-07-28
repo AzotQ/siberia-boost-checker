@@ -24,7 +24,11 @@ export async function fetchYUMTransfers(walletId, symbol = 'SBR', batch = DEFAUL
 
     return all
         .filter(tx => {
-            const ts = BigInt(tx.timestamp_nanosec || 0);
+            // Check that timestamp_nanosec exists and it is a string/number cast to BigInt
+            const tsRaw = tx.timestamp_nanosec;
+            // tsRaw must be a number or a string consisting entirely of digits
+            if (!tsRaw || !/^\d+$/.test(String(tsRaw))) return false;
+            const ts = BigInt(tsRaw);
             if (startNano !== null && ts < startNano) return false;
             if (endNano !== null && ts > endNano) return false;
             return true;
@@ -32,11 +36,10 @@ export async function fetchYUMTransfers(walletId, symbol = 'SBR', batch = DEFAUL
         .map(tx => {
             const decimals = Number(tx.decimals || 0);
             const raw = BigInt(tx.amount || '0');
-            const amount = Number(raw) / 10 ** decimals;
             return {
                 from: tx.from,
-                amount,
-                ts: tx.timestamp_nanosec // добавляем ts!
+                amount: Number(raw) / 10 ** decimals,
+                ts: tx.timestamp_nanosec
             };
         });
 }
