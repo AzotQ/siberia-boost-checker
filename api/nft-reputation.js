@@ -26,6 +26,7 @@ export default async function handler(req, res) {
     }
 
     try {
+        // --- 1. Собираем отправителей NFT
         const allTransfers = [];
         const nftFirstTs = {};
         let offset = skip;
@@ -68,6 +69,7 @@ export default async function handler(req, res) {
             offset += limit;
         } while (offset < totalCount);
 
+        // Репутация по NFT
         const repResp = await fetch(UNIQUE_REPUTATION_URL);
         const repMap = {};
         if (repResp.ok) {
@@ -82,6 +84,7 @@ export default async function handler(req, res) {
             console.warn(`Unique-reputation API returned ${repResp.status}`);
         }
 
+        // --- 2. Собираем по каждому отправителю NFT его данные
         const bySender = {};
         allTransfers.forEach(tx => {
             const from = tx.sender_id;
@@ -104,36 +107,54 @@ export default async function handler(req, res) {
             rec.totalRep = rec.count * rec.rep;
         });
 
-        let leaderboard = Object.entries(bySender)
-            .map(([wallet, { total, nftCount, tokens }]) => ({
-                wallet,
-                total,
-                nftCount,
-                tokens: Object.values(tokens),
-                yum: 0,
-                firstNftTs: nftFirstTs[wallet] || null
-            }));
-
+        // --- 3. Собираем отправителей токенов (SBR)
         const yumTransfers = await fetchYUMTransfers(walletId, 'SBR', 200, startNano, endNano);
         const yumBySender = {};
+        const tokenFirstTs = {};
 
         yumTransfers.forEach(tx => {
-            const { from, amount } = tx;
+            const { from, amount, ts } = tx;
             if (!from || typeof amount !== 'number') return;
             if (!yumBySender[from]) yumBySender[from] = 0;
             yumBySender[from] += amount;
+
+            if (ts) {
+                if (!tokenFirstTs[from] || BigInt(ts) < BigInt(tokenFirstTs[from])) {
+                    tokenFirstTs[from] = ts;
+                }
+            }
         });
 
-        leaderboard.forEach(entry => {
-            entry.yum = yumBySender[entry.wallet] || 0;
-        });
+        // --- 4. Собрать всех уникальных отправителей (NFT или токены)
+        const allSenders = new Set([
+            ...Object.keys(bySender),
+            ...Object.keys(yumBySender)
+        ]);
 
-        // Sort by date of first NFT transfer
+        // --- 5. Формируем итоговый leaderboard
+        const leaderboard = [];
+        for (const sender of allSenders) {
+            leaderboard.push({
+                wallet: sender,
+                total: bySender[sender]?.total || 0,
+                nftCount: bySender[sender]?.nftCount || 0,
+                tokens: bySender[sender] ? Object.values(bySender[sender].tokens) : [],
+                yum: yumBySender[sender] || 0,
+                firstNftTs: nftFirstTs[sender] || null,
+                firstTokenTs: tokenFirstTs[sender] || null,
+                // для сортировки можно добавить минимальный ts из обоих
+                firstTxTs: nftFirstTs[sender] && tokenFirstTs[sender]
+                    ? String(BigInt(nftFirstTs[sender]) < BigInt(tokenFirstTs[sender]) ? nftFirstTs[sender] : tokenFirstTs[sender])
+                    : (nftFirstTs[sender] || tokenFirstTs[sender] || null)
+            });
+        }
+
+        // --- 6. Сортировка по дате первой транзакции
         leaderboard.sort((a, b) => {
-            if (!a.firstNftTs) return 1;
-            if (!b.firstNftTs) return -1;
-            const tsA = BigInt(a.firstNftTs);
-            const tsB = BigInt(b.firstNftTs);
+            if (!a.firstTxTs) return 1;
+            if (!b.firstTxTs) return -1;
+            const tsA = BigInt(a.firstTxTs);
+            const tsB = BigInt(b.firstTxTs);
             if (tsA < tsB) return -1;
             if (tsA > tsB) return 1;
             return 0;

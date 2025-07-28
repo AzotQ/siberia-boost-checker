@@ -105,7 +105,7 @@
         .loader-container {
             position: relative;
             width: 100%;
-            height: 60px;
+            height: 100px;
             margin: 30px 0 0;
         }
         .loader-container .loader {
@@ -118,11 +118,11 @@
         }
         .clock .loader {
             width: 100px;
-            height: 60px;
+            height: 90px;
         }
         .clock .loader .arc {
             position: absolute;
-            top: -10px;
+            top: 5px;
             right: 5px;
             margin: 0 auto;
             border: 2px solid #327ac6;
@@ -199,7 +199,8 @@
         }
 
         .mode-select,
-        .controls label#symbolLabel {
+        .controls label#symbolLabel,
+        #directionLabel {
             display: none !important;
         }
     </style>
@@ -224,7 +225,7 @@
     <div class="controls-wrapper">
         <label>
             Wallet ID:
-            <input type="text" id="wallet" value="azotq.tg" />
+            <input type="text" id="wallet" value="sbr_nora.near" />
         </label>
         <label>
             From:
@@ -241,7 +242,7 @@
             NFT title:
             <input type="text" id="tokenFilter" placeholder="Имя NFT" />
         </label>
-        <label>
+        <label id="directionLabel">
             Direction:
             <select id="direction">
                 <option value="in" selected>in</option>
@@ -290,7 +291,7 @@
 <div id="spinner" class="loader-container clock" style="display:none;">
     <div class="loader">
         <div class="arc"></div>
-        <div class="morj"><img src="public/morj.gif" width="100" height="50" alt="loading" /></div>
+        <div class="morj"><img src="public/rabbit.gif" width="100" height="90" alt="loading" /></div>
     </div>
 </div>
 
@@ -570,7 +571,7 @@
 
         const data = [];
         // Заголовок
-        data.push(['#', 'Wallet', `Amount of ${currentSymbol}`, 'Amount of NFT', 'Amount of Rep']);
+        data.push(['#', 'Wallet', `Amount of ${currentSymbol}`, 'Amount of NFT']);
 
         // Строки, где числовые поля как числа
         filteredData.forEach((item, idx) => {
@@ -578,8 +579,7 @@
                 idx + 1,
                 item.wallet,
                 typeof item.yum === 'number' ? item.yum : Number(item.yum) || 0,
-                typeof item.nftCount === 'number' ? item.nftCount : Number(item.nftCount) || 0,
-                typeof item.total === 'number' ? item.total : Number(item.total) || 0
+                typeof item.nftCount === 'number' ? item.nftCount : Number(item.nftCount) || 0
             ]);
         });
 
@@ -595,7 +595,7 @@
         const s = document.getElementById('start').value;
         const e = document.getElementById('end').value;
         a.href = url;
-        a.download = `yupland-checker_${s}-${e}.xlsx`;
+        a.download = `siberia-checker_${s}-${e}.xlsx`;
         a.click();
         URL.revokeObjectURL(url);
     }
