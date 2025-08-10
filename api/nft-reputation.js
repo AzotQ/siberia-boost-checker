@@ -1,8 +1,8 @@
 import fetch from 'node-fetch';
 import { fetchYUMTransfers } from './yum-rewards.js';
 
-const TRANSFERS_URL = 'https://dialog-tbot.com/history/nft-transfers/';
-const UNIQUE_REPUTATION_URL = 'https://dialog-tbot.com/nft/unique-reputation/';
+const TRANSFERS_URL = 'https://api.sendler.xyz/history/nft-transfers/';
+const UNIQUE_REPUTATION_URL = 'https://api.sendler.xyz/nft/unique-reputation/';
 const DEFAULT_LIMIT = 200;
 const DEFAULT_SKIP = 0;
 
